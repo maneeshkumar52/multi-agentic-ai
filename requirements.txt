@@ -1,0 +1,9 @@
+streamlit
+requests
+python-dotenv
+markdown2
+PyMuPDF
+python-docx
+beautifulsoup4
+lxml
+openai
