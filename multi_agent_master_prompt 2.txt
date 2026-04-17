@@ -1,0 +1,1175 @@
+===================================================================================
+MULTI-AGENT PIPELINE - 4-PHASE RAPID DEVELOPMENT GUIDE FOR GITHUB COPILOT
+===================================================================================
+
+PROJECT OVERVIEW:
+Build a complete ENTERPRISE-GRADE multi-agent pipeline with Streamlit frontend, web 
+search, compliance validation, document formatting (Markdown/PDF/Word), and email 
+delivery. Uses Azure OpenAI for AI summaries and SMTP for email delivery.
+
+MULTI-AGENT ARCHITECTURE (5 AGENTS):
+1. WebSearchAgent - DuckDuckGo scraping with Azure OpenAI summaries
+2. ComplianceGuardAgent - Citation validation, hallucination control, quality checks
+3. DocumentFormatterAgent - Generate MD/PDF/DOCX with validated content
+4. EmailerAgent - Send professional emails with attachments
+5. PipelineOrchestrator - Coordinate all agents sequentially
+
+PIPELINE FLOW:
+Streamlit UI → Orchestrator → WebSearch → ComplianceGuard → DocumentFormatter → EmailerAgent
+
+TECH STACK: 
+Python 3.8+, Streamlit, Azure OpenAI, SMTP, PyMuPDF (for PDF), python-docx, 
+markdown2, beautifulsoup4, requests
+
+CRITICAL IMPLEMENTATION RULES (APPLY TO ALL PHASES):
+✓ Use PyMuPDF (fitz) for PDF generation - works on Windows without GTK dependencies
+✓ Azure OpenAI: Initialize WITHOUT 'proxies' parameter to avoid errors
+✓ Always check None/null before Path() or file operations
+✓ Filter None values from attachment lists before processing
+✓ Use modern EmailMessage API (NOT MIMEMultipart) per Python 3.12+ standards
+✓ Singleton pattern for loggers to avoid duplicate handlers
+✓ Graceful error handling with try/except and informative logging
+✓ Validate configuration before executing pipeline
+✓ Install ALL dependencies at once in Phase 1 (frontend + backend)
+✓ Run frontend and backend in SEPARATE terminal windows to avoid conflicts
+✓ CRITICAL: ComplianceGuardAgent MUST validate all content before document generation
+✓ Pipeline MUST stop if ComplianceGuard rejects content (approved=False)
+
+AGENT EXECUTION ORDER (STRICT SEQUENCE):
+1. WebSearchAgent → Scrape DuckDuckGo
+2. ComplianceGuardAgent → Validate citations, remove duplicates, check quality
+3. DocumentFormatterAgent → Generate MD/PDF/DOCX with VALIDATED content only
+4. EmailerAgent → Send email with compliance badge and validated documents
+
+MANDATORY DEBUGGING PROTOCOL FOR EACH PHASE:
+After implementing each phase, you MUST:
+1. Create test file for the phase and execute it using run_notebook_cell or run_in_terminal
+2. If errors occur, analyze and fix them IMMEDIATELY - DO NOT ask user
+3. Re-run tests until ALL tests pass successfully
+4. Only log "Phase X Complete ✓" after successful test execution
+5. DO NOT proceed to next phase until current phase is fully working
+6. Fix all import errors, syntax errors, and runtime errors automatically
+
+===================================================================================
+PHASE 1: PROJECT SETUP + ALL DEPENDENCIES + CORE UTILITIES
+===================================================================================
+
+OBJECTIVE: Create complete project structure, install ALL dependencies, and build core utilities
+
+STEP 1.1 - CREATE PROJECT STRUCTURE:
+Execute these actions in sequence:
+1. Create folders: agents/, utils/, outputs/
+2. Create requirements.txt with ALL packages (frontend + backend)
+3. Create .env with exact credentials
+4. Create .gitignore
+
+STEP 1.2 - INSTALL ALL DEPENDENCIES AT ONCE:
+Use install_python_packages to install EVERYTHING in one go:
+   streamlit
+   requests
+   python-dotenv
+   markdown2
+   PyMuPDF
+   python-docx
+   beautifulsoup4
+   lxml
+   openai
+
+STEP 1.3 - BUILD CONFIGURATION FILES:
+
+FILE: requirements.txt
+-----------------------------------
+streamlit
+requests
+python-dotenv
+markdown2
+PyMuPDF
+python-docx
+beautifulsoup4
+lxml
+openai
+
+FILE: .env
+-----------------------------------
+# SMTP Configuration
+SMTP_HOST=smtp-mail.outlook.com
+SMTP_PORT=587
+SMTP_USER=<your-email>
+SMTP_PASSWORD=<your-password>
+
+# Azure OpenAI Configuration
+AZURE_OPENAI_API_KEY=<your-api-key>
+AZURE_OPENAI_ENDPOINT=<your-openai-endpoint>
+AZURE_OPENAI_API_VERSION=<openai-version>
+AZURE_OPENAI_DEPLOYMENT=<open-ai-deployment-name>
+
+# Email Settings
+FROM_EMAIL=<your-email>
+DEFAULT_TO_EMAIL=<sender-email>
+
+# Application Settings
+OUTPUT_DIR=./outputs
+
+FILE: .gitignore
+-----------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+venv/
+outputs/
+.vscode/
+.DS_Store
+*.log
+
+STEP 1.4 - BUILD CORE UTILITIES:
+
+FILE: utils/config.py
+-----------------------------------
+REQUIREMENTS:
+- Load environment variables using python-dotenv
+- Cast SMTP_PORT to int, OUTPUT_DIR to Path object
+- Methods: 
+  * validate() - returns list of errors (empty list if valid)
+  * ensure_output_dir() - creates output directory
+  * is_azure_openai_configured() - checks Azure OpenAI availability
+- Auto-create output directory when module loads
+- All config as class attributes (SMTP_HOST, SMTP_PORT, etc.)
+
+FILE: utils/logger.py
+-----------------------------------
+REQUIREMENTS:
+- Singleton pattern per logger name to avoid duplicate handlers
+- Clear existing handlers before adding new ones
+- Methods:
+  * log_agent_activity(agent_name, action, details=None)
+  * log_error(message, exception=None)
+- Use exc_info=True for full tracebacks when exception provided
+- Format: [%(asctime)s] %(levelname)s - %(message)s
+
+FILE: utils/__init__.py
+-----------------------------------
+from .config import Config
+from .logger import Logger
+
+__all__ = ['Config', 'Logger']
+
+STEP 1.5 - TESTING AND DEBUG:
+Create test_phase1.py with these checks:
+1. Import Config and Logger successfully
+2. Verify all environment variables loaded (print each one)
+3. Check OUTPUT_DIR exists and is writable
+4. Test Logger singleton behavior
+5. Verify Config.validate() returns empty list
+6. Test log_agent_activity() and log_error() methods
+7. Verify virtual environment Python path
+8. Test PyMuPDF import: try both 'import fitz' and 'import pymupdf as fitz'
+
+EXECUTE test_phase1.py and fix ANY errors automatically until ALL tests pass.
+
+VERIFICATION CHECKLIST:
+1. Run: python -c "from utils import Config, Logger; print('✓ Utils imported')"
+2. Run: python -c "import pymupdf; print(f'✓ PyMuPDF {pymupdf.__version__}')"
+3. Verify all packages installed in virtual environment (not global Python)
+
+COMMON ISSUES & AUTO-FIX (PHASE 1):
+
+Issue: Virtual environment not activated
+Fix: Always use full path: C:/Code_Repo/AgenticAI/.venv/Scripts/python.exe
+Verify: Check sys.executable points to .venv directory
+
+Issue: PyMuPDF not installed
+Fix: Run install_python_packages(['PyMuPDF'])
+Verify: import pymupdf should work
+
+Issue: Duplicate logger handlers
+Fix: Clear existing handlers before adding new ones in logger.py
+Code: logger.handlers.clear() before logger.addHandler()
+
+Issue: OUTPUT_DIR not created
+Fix: Add Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True) in config.py
+
+COMPLETION CRITERIA:
+□ All folders exist (agents/, utils/, outputs/)
+□ ALL dependencies installed successfully IN VIRTUAL ENVIRONMENT
+□ .env file created with exact credentials
+□ Config loads all variables correctly
+□ Logger works without duplicate handlers
+□ PyMuPDF imports successfully (test both import methods)
+□ test_phase1.py passes 100%
+□ Log "✓ PHASE 1 COMPLETE - Core utilities operational"
+
+===================================================================================
+PHASE 2: WEB SEARCH AGENT WITH AI SUMMARIES
+===================================================================================
+
+OBJECTIVE: Build web search agent with DuckDuckGo and Azure OpenAI summaries
+
+FILE: agents/web_search_agent.py
+-----------------------------------
+REQUIREMENTS:
+- Support DuckDuckGo HTML scraping with BeautifulSoup4
+- Integrate Azure OpenAI for AI-powered summaries
+- Return structured JSON with results, sources, and AI summary
+- Graceful fallback if Azure OpenAI unavailable
+
+CRITICAL IMPLEMENTATION DETAILS:
+
+1. Import Azure OpenAI with try/except:
+   try:
+       from openai import AzureOpenAI
+       AZURE_OPENAI_AVAILABLE = True
+   except ImportError:
+       AZURE_OPENAI_AVAILABLE = False
+
+2. Initialize Azure OpenAI WITHOUT 'proxies' parameter:
+   self.azure_client = AzureOpenAI(
+       api_version=Config.AZURE_OPENAI_API_VERSION,
+       azure_endpoint=Config.AZURE_OPENAI_ENDPOINT,
+       api_key=Config.AZURE_OPENAI_API_KEY
+   )
+   # DO NOT include proxies=None or any proxy parameter!
+
+3. Set self.azure_client = None in exception handler
+
+4. Method: search(query, num_results=5)
+   - Scrape DuckDuckGo HTML: https://html.duckduckgo.com/html/?q={query}
+   - Parse with BeautifulSoup4
+   - Extract results: title, url, snippet, source
+   - Generate AI summary using _generate_ai_summary()
+   - Return structured dict
+
+5. Method: _generate_ai_summary(query, results)
+   - Check if Azure OpenAI available
+   - Call chat.completions.create() with Config.AZURE_OPENAI_DEPLOYMENT
+   - System prompt: "You are a helpful research assistant. Summarize search results."
+   - User prompt: Include query and results
+   - Return summary string or None if failed
+   - Log errors, don't crash
+
+6. Return format:
+   {
+       'status': 'success',
+       'query': query,
+       'results': [
+           {
+               'title': str,
+               'url': str,
+               'snippet': str,
+               'source': 'DuckDuckGo'
+           }
+       ],
+       'total_results': int,
+       'sources': [urls],
+       'ai_summary': str or None
+   }
+
+FILE: agents/__init__.py
+-----------------------------------
+from .web_search_agent import WebSearchAgent
+
+__all__ = ['WebSearchAgent']
+
+TESTING AND DEBUG:
+Create test_phase2.py with these checks:
+1. Import WebSearchAgent successfully
+2. Execute search with query "Python programming"
+3. Verify results list has expected structure
+4. Check each result has: title, url, snippet, source
+5. Verify AI summary generated (if Azure OpenAI configured)
+6. Test error handling with invalid query
+7. Print sample result to verify format
+
+EXECUTE test_phase2.py and fix ANY errors automatically:
+- Fix import errors
+- Fix BeautifulSoup parsing issues
+- Fix Azure OpenAI API errors
+- Re-run until ALL tests pass
+
+COMPLETION CRITERIA:
+□ agents/web_search_agent.py created and working
+□ DuckDuckGo scraping returns valid results
+□ Azure OpenAI summaries generate correctly
+□ agents/__init__.py exports WebSearchAgent
+□ test_phase2.py passes 100%
+□ Log "✓ PHASE 2 COMPLETE - Web search operational"
+
+===================================================================================
+PHASE 3: COMPLIANCE GUARD + DOCUMENT FORMATTER + EMAIL AGENT + ORCHESTRATOR
+===================================================================================
+
+OBJECTIVE: Build compliance validation, document generation, email delivery, and 
+pipeline orchestration
+
+PART A: COMPLIANCE & QUALITY GUARD AGENT (CRITICAL - DO NOT SKIP)
+-----------------------------------
+FILE: agents/compliance_guard_agent.py
+
+PURPOSE: 
+Enterprise-grade safety layer that ensures all outputs are:
+- Citation-backed (no uncited claims)
+- Hallucination-free (AI summary matches sources)
+- Duplicate-free (clean, unique results)
+- Professional & safe for client delivery
+
+REQUIREMENTS:
+- Validate search results and AI summaries
+- Check every factual claim has a source URL
+- Remove duplicates and low-quality snippets
+- Cross-check AI summary against actual sources
+- Return approval/rejection flag
+- Stop pipeline if validation fails
+
+CRITICAL IMPLEMENTATION:
+
+1. Method: validate(search_result)
+   - Input: Raw output from WebSearchAgent
+   - Validate citations exist
+   - Remove duplicate URLs
+   - Check AI summary consistency
+   - Filter low-quality results
+   - Return structured validation result
+
+2. Method: _validate_citations(results)
+   - Check each result has: title, url, snippet
+   - Remove results with missing fields
+   - Ensure URLs are valid and accessible
+   - Return cleaned results list
+
+3. Method: _remove_duplicates(results)
+   - Deduplicate by URL
+   - Keep first occurrence
+   - Return unique results
+
+4. Method: _validate_ai_summary(summary, results)
+   - Check if summary is None or empty
+   - Verify summary references actual result content
+   - Flag if summary seems generic or hallucinated
+   - Return validated summary or None
+
+5. Method: _check_content_quality(results)
+   - Filter results with snippets < 20 characters
+   - Remove results with broken/invalid URLs
+   - Ensure minimum quality threshold
+   - Return quality score
+
+6. Return format:
+   {
+       'status': 'approved' | 'rejected',
+       'approved': bool,
+       'cleaned_results': [validated results],
+       'validated_summary': str or None,
+       'original_count': int,
+       'cleaned_count': int,
+       'issues': [list of issues found],
+       'quality_score': float (0-1)
+   }
+
+Example rejected output:
+{
+    'status': 'rejected',
+    'approved': False,
+    'issues': [
+        'Missing citations for 3 results',
+        'AI summary conflicts with sources',
+        '5 duplicate URLs found'
+    ],
+    'quality_score': 0.3
+}
+
+PART B: DOCUMENT FORMATTER AGENT
+-----------------------------------
+FILE: agents/document_formatter.py
+
+REQUIREMENTS:
+- Generate Markdown with title, timestamp, AI summary, results, citations
+- Generate PDF using PyMuPDF (fitz library) - NOT weasyprint
+- Generate Word document using python-docx
+- Return structured dict with file paths and generation status
+
+CRITICAL IMPLEMENTATION:
+
+1. Method: format_documents(search_result, query, filename_prefix='search_report')
+   - Generate timestamp for filenames
+   - Create all three document formats
+   - Save to Config.OUTPUT_DIR
+   - Return paths and status
+
+2. Markdown Generation (_generate_markdown):
+   - Title with query and timestamp
+   - AI Summary section (if available)
+   - Search Results with numbering
+   - Citations/Sources at end
+   - Save as {filename_prefix}_{timestamp}.md
+
+3. PDF Generation using PyMuPDF (_generate_pdf):
+   - Import with fallback (CRITICAL - PyMuPDF 1.24+ uses different import):
+     try:
+         import fitz  # PyMuPDF < 1.24
+     except ImportError:
+         import pymupdf as fitz  # PyMuPDF >= 1.24
+   - Create new PDF document: doc = fitz.open()
+   - Add page: page = doc.new_page()
+   - Insert text with proper formatting
+   - Add title, content, search results
+   - Save as {filename_prefix}_{timestamp}.pdf
+   - Return True if successful, False if error
+   - Log errors, don't crash
+
+4. Word Generation (_generate_word):
+   - Import: from docx import Document
+   - Create new Document
+   - Add heading with query
+   - Add AI summary paragraph
+   - Add search results as numbered list
+   - Professional formatting (fonts, spacing)
+   - Save as {filename_prefix}_{timestamp}.docx
+   - Return True if successful, False if error
+
+5. Return format:
+   {
+       'status': 'success',
+       'markdown_path': str(md_path),
+       'pdf_path': str(pdf_path) if pdf_generated else None,
+       'pdf_generated': bool,
+       'docx_path': str(docx_path) if docx_generated else None,
+       'docx_generated': bool,
+       'files_created': [list of paths],
+       'content_validated': True  # Always True since using ComplianceGuard output
+   }
+
+PART C: EMAIL AGENT
+-----------------------------------
+FILE: agents/document_formatter.py
+
+REQUIREMENTS:
+- Accept VALIDATED content from ComplianceGuardAgent
+- Generate Markdown with title, timestamp, AI summary, results, citations
+- Generate PDF using PyMuPDF (fitz library) - NOT weasyprint
+- Generate Word document using python-docx
+- Return structured dict with file paths and generation status
+
+CRITICAL IMPLEMENTATION:
+
+1. Method: format_documents(compliance_result, query, filename_prefix='search_report')
+   - Input: VALIDATED output from ComplianceGuardAgent (not raw search results)
+   - Use compliance_result['cleaned_results'] for document generation
+   - Use compliance_result['validated_summary'] for AI summary section
+   - Generate timestamp for filenames
+   - Create all three document formats
+   - Save to Config.OUTPUT_DIR
+   - Return paths and status
+-----------------------------------
+FILE: agents/emailer_agent.py
+
+REQUIREMENTS:
+- Use modern EmailMessage API (NOT MIMEMultipart)
+- Send emails with HTML body and attachments
+- SMTP with proper error handling
+- Filter None values from attachments
+
+CRITICAL IMPLEMENTATION:
+
+1. Method: send_email(to, subject, body, attachments=None)
+   - Use EmailMessage from email.message
+   - Set From, To, Subject headers
+   - HTML body with CSS styling
+   - Attach files using _attach_file_smtp()
+   - Connect via SMTP with context manager
+   - Use Config.SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD
+   - Return success/failure dict
+
+2. Method: send_search_results_email(search_result, recipient, attachments=None)
+   - Generate professional HTML email body
+   - Include AI summary if available
+   - List search results with links
+   - CSS styling (blue theme, cards)
+   - Call send_email() with formatted content
+
+3. Method: _attach_file_smtp(msg, filepath)
+   - Check file exists
+   - Detect MIME type using mimetypes module
+   - Read file as binary
+   - Add attachment to EmailMessage
+   - Handle errors gracefully
+
+4. Filter None from attachments:
+   if attachments:
+       attachments = [a for a in attachments if a is not None and Path(a).exists()]
+
+PART C: EMAIL AGENT
+-----------------------------------
+FILE: agents/emailer_agent.py
+
+REQUIREMENTS:
+- Use modern EmailMessage API (NOT MIMEMultipart)
+- Send emails with HTML body and attachments
+- SMTP with proper error handling
+- Filter None values from attachments
+
+CRITICAL IMPLEMENTATION:
+
+1. Method: send_email(to, subject, body, attachments=None)
+   - Use EmailMessage from email.message
+   - Set From, To, Subject headers
+   - HTML body with CSS styling
+   - Attach files using _attach_file_smtp()
+   - Connect via SMTP with context manager
+   - Use Config.SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD
+   - Return success/failure dict
+
+2. Method: send_search_results_email(compliance_result, recipient, attachments=None)
+   - Input: VALIDATED compliance_result (not raw search results)
+   - Generate professional HTML email body
+   - Include validated AI summary if available
+   - List cleaned search results with links
+   - Add compliance badge: "✓ Content Validated & Citation-Checked"
+   - CSS styling (blue theme, cards)
+   - Call send_email() with formatted content
+-----------------------------------
+FILE: orchestrator.py
+
+REQUIREMENTS:
+- Initialize all FOUR agents (WebSearch, ComplianceGuard, DocumentFormatter, Emailer)
+- Execute pipeline stages SEQUENTIALLY with compliance check
+- STOP pipeline if ComplianceGuard rejects content
+- Validate configuration before running
+- Return comprehensive result with all stage outputs
+
+CRITICAL IMPLEMENTATION:
+
+1. Method: __init__()
+   - Initialize WebSearchAgent()
+   - Initialize ComplianceGuardAgent()  # NEW - CRITICAL
+   - Initialize DocumentFormatterAgent()
+   - Initialize EmailerAgent()
+   - Initialize Logger
+
+2. Method: validate_configuration()
+   - Call Config.validate()
+   - Return list of validation errors
+   - Check SMTP credentials
+   - Check Azure OpenAI config (optional)
+
+3. Method: run_pipeline(query, num_results=5, send_email=False, recipient_email=None, filename_prefix='search_report')
+   - Generate pipeline_id using uuid.uuid4()
+   - Record timestamp
+   - Execute stages IN ORDER:
+     
+     a) STAGE 1: Web Search
+        web_result = self.web_search_agent.search(query, num_results)
+     
+     b) STAGE 2: Compliance Guard (CRITICAL - NEW)
+        compliance_result = self.compliance_guard.validate(web_result)
+        
+        if not compliance_result['approved']:
+            return {
+                'status': 'rejected',
+                'stage': 'compliance_guard',
+                'issues': compliance_result['issues'],
+                'quality_score': compliance_result['quality_score']
+            }
+     
+     c) STAGE 3: Document Formatting (uses validated content)
+        doc_result = self.doc_formatter.format_documents(
+            compliance_result,  # Pass validated content, not raw
+            query,
+            filename_prefix
+        )
+     
+     d) STAGE 4: Email (if send_email=True)
+        if send_email:
+            email_result = self.emailer.send_search_results_email(
+                compliance_result,  # Pass validated content
+                recipient_email,
+                doc_result['files_created']
+            )
+   
+   - Catch and log errors per stage
+   - Return comprehensive result dict
+
+4. Return format:
+   {
+       'pipeline_id': str(uuid),
+       'timestamp': ISO format,
+       'query': str,
+       'status': 'success' | 'partial_success' | 'rejected' | 'error',
+       'stages': {
+           'web_search': {...},
+           'compliance_guard': {
+               'approved': bool,
+               'quality_score': float,
+               'issues': [...]
+           },
+           'document_formatting': {...},
+           'email': {...}
+       },
+       'compliance_passed': bool  # NEW - critical flag
+   }
+
+5. Method: get_pipeline_summary(result)
+   - Format result for clean display
+   - Return key metrics and file paths
+
+UPDATE: agents/__init__.py
+-----------------------------------
+from .web_search_agent import WebSearchAgent
+from .compliance_guard_agent import ComplianceGuardAgent
+from .document_formatter import DocumentFormatterAgent
+from .emailer_agent import EmailerAgent
+
+__all__ = ['WebSearchAgent', 'ComplianceGuardAgent', 'DocumentFormatterAgent', 'EmailerAgent']
+
+TESTING AND DEBUG:
+Create test_phase3.py with these checks:
+1. Import all FOUR agents successfully (including ComplianceGuardAgent)
+2. Test ComplianceGuardAgent with sample search result
+   - Verify citation validation works
+   - Test duplicate removal
+   - Check quality scoring
+   - Verify approval/rejection logic
+3. Test DocumentFormatterAgent with VALIDATED compliance result
+4. Verify Markdown, PDF, Word files created in outputs/
+5. Test EmailerAgent (optional - may skip if no email needed)
+6. Test PipelineOrchestrator.validate_configuration()
+7. Run full pipeline with test query
+8. Verify ComplianceGuard stage executes
+9. Verify all stages complete successfully
+10. Check pipeline result structure includes compliance_guard stage
+
+EXECUTE test_phase3.py and fix ANY errors automatically:
+- Fix ComplianceGuardAgent implementation errors
+- Fix citation validation logic
+- Fix PyMuPDF import/usage errors
+- Fix python-docx errors
+- Fix SMTP connection errors (may skip email test)
+- Fix orchestrator logic errors with 4-agent pipeline
+- Re-run until ALL tests pass
+
+VERIFICATION CHECKLIST (PHASE 3):
+1. Test ComplianceGuardAgent import:
+   python -c "from agents.compliance_guard_agent import ComplianceGuardAgent; print('✓')"
+2. Test PyMuPDF import:
+   python -c "from agents.document_formatter import DocumentFormatterAgent; print('✓')"
+3. Create test documents and verify:
+   - Compliance validation passes
+   - Content is citation-backed
+   - Markdown: Should be 500+ bytes
+   - PDF: Should be 2000+ bytes with fitz.open() working
+   - DOCX: Should be 30000+ bytes
+4. Verify all files created in outputs/ folder
+5. Test orchestrator initialization with 4 agents without errors
+
+COMMON ISSUES & AUTO-FIX (PHASE 3):
+
+Issue: ComplianceGuardAgent validation too strict
+Fix: Adjust quality thresholds (e.g., min_snippet_length = 20, min_quality_score = 0.5)
+Tune: Based on actual search results from DuckDuckGo
+
+Issue: All content getting rejected
+Fix: Check if citation validation logic is correct
+Debug: Print validation issues to understand rejection reasons
+Adjust: Loosen duplicate detection (allow similar but not identical URLs)
+
+Issue: ModuleNotFoundError: No module named 'fitz'
+Fix: Update document_formatter.py imports:
+     try:
+         import fitz  # PyMuPDF < 1.24
+     except ImportError:
+         import pymupdf as fitz  # PyMuPDF >= 1.24
+Verify: Run import test after fix
+
+Issue: Path(None) TypeError in document formatter
+Fix: Check paths before creating Path objects:
+     if pdf_path: Path(pdf_path)
+Add: None checks for all optional paths
+
+Issue: Email attachment filtering
+Fix: Filter None values before attaching:
+     attachments = [a for a in attachments if a and Path(a).exists()]
+
+Issue: SMTP authentication failed
+Fix: May need app-specific password for email providers
+Workaround: Skip email tests if SMTP unavailable (don't block progress)
+
+Issue: PDF generation fails silently
+Fix: Add try/except in _generate_pdf(), return False on error
+Log: Use logger.log_error() for debugging
+
+COMPLETION CRITERIA:
+□ ComplianceGuardAgent validates search results successfully
+□ Citation validation works correctly
+□ Duplicate removal functional
+□ Quality scoring implemented
+□ Document formatter creates MD, PDF, DOCX files with validated content
+□ PyMuPDF import works with both old and new versions
+□ Email agent sends emails with compliance badge (tested or skipped)
+□ Orchestrator runs 4-agent pipeline successfully
+□ Pipeline stops if compliance check fails
+□ All agents exported in __init__.py (4 agents total)
+□ test_phase3.py passes 100%
+□ Verification checklist completed
+□ Log "✓ PHASE 3 COMPLETE - All agents operational with compliance validation"
+
+===================================================================================
+PHASE 4: STREAMLIT FRONTEND + APPLICATION LAUNCH
+===================================================================================
+
+OBJECTIVE: Build Streamlit UI and launch the complete application
+
+FILE: streamlit_app.py
+-----------------------------------
+REQUIREMENTS:
+- Professional web UI with configuration validation
+- Search form with all options
+- Progress tracking during execution
+- Results display with download buttons
+- Error handling and validation
+
+CRITICAL IMPLEMENTATION:
+
+1. Page Configuration (at top of file):
+   st.set_page_config(
+       page_title="Multi-Agent Search Pipeline",
+       page_icon="🔍",
+       layout="wide"
+   )
+
+2. Custom CSS Styling:
+   - Blue theme (#1f77b4)
+   - Card-style containers
+   - Status boxes (success=green, error=red, warning=orange)
+   - Professional fonts and spacing
+
+3. Session State Management:
+   - st.session_state.pipeline_result
+   - st.session_state.orchestrator (initialize once)
+
+4. Sidebar - Configuration Validation:
+   - Display system info
+   - Show Config.validate() status
+   - Azure OpenAI availability indicator
+   - PDF generation capability status
+   - Compliance Guard status (show if agent initialized)
+   - Color-coded status badges
+
+5. Main Area - Search Interface:
+   - Title and description
+   - Text input for search query
+   - Slider for number of results (1-10, default=5)
+   - Checkbox for "Send Email"
+   - Text input for recipient email (enabled only if checkbox checked)
+   - Submit button
+
+6. Validation Before Execution:
+   - Check query is not empty
+   - If send_email checked, validate recipient_email not empty
+   - Check Config.validate() returns empty list
+   - Display errors in red status box if validation fails
+
+7. Pipeline Execution with Progress:
+   - Show progress bar with status text
+   - Update progress for each stage: 
+     * "Searching..." (10%)
+     * "Validating content..." (40%) # NEW - Compliance check
+     * "Formatting documents..." (70%)
+     * "Sending email..." (90%)
+   - Display spinner during execution
+   - Show compliance status: "✓ Content validated and citation-checked"
+   - Catch all exceptions and display errors
+   - Handle rejection from ComplianceGuard gracefully
+
+8. Results Display (after successful execution):
+   - Expandable section for Compliance Validation (NEW)
+     * Show approval status: "✓ Content Approved" or "✗ Content Rejected"
+     * Display quality score (0-1)
+     * List validation issues (if any)
+     * Show original vs cleaned result count
+   - Expandable section for Web Search Results
+     * Show AI summary (if available and validated)
+     * Display search results as numbered list with links
+     * Badge: "Citation-backed content"
+   - Expandable section for Document Formatting
+     * Show files created
+     * Download buttons for each file (Markdown, PDF, Word)
+   - Expandable section for Email (if sent)
+     * Show recipient and status
+     * Note: "Email includes compliance validation badge"
+   - Expandable section for Raw JSON Output
+     * Display full pipeline result in formatted JSON
+
+9. Download Buttons Implementation:
+   - Check file exists before creating button
+   - Use proper MIME types:
+     * Markdown: text/markdown
+     * PDF: application/pdf
+     * Word: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+   - PDF button only shows if pdf_generated=True and file exists
+   - Word button only shows if docx_generated=True and file exists
+
+10. Error Handling:
+    - Wrap pipeline execution in try/except
+    - Display errors in red status boxes with error message
+    - Log all errors using Logger
+    - Don't crash the app - show error and allow retry
+
+TESTING AND DEBUG:
+Create test_phase4.py to verify Streamlit app:
+1. Import streamlit and all dependencies
+2. Verify streamlit_app.py has no syntax errors
+3. Check all required functions are defined
+4. Validate imports work correctly
+
+LAUNCH APPLICATION:
+After test_phase4.py passes:
+
+1. CRITICAL: Use Virtual Environment Python to run Streamlit:
+   - WRONG: streamlit run streamlit_app.py (may use wrong Python)
+   - CORRECT: C:/Code_Repo/AgenticAI/.venv/Scripts/python.exe -m streamlit run streamlit_app.py
+   - Set isBackground=True to keep it running
+   - This ensures all installed packages are available
+
+2. Launch command:
+   run_in_terminal(
+       command="C:/Code_Repo/AgenticAI/.venv/Scripts/python.exe -m streamlit run streamlit_app.py",
+       explanation="Launching Streamlit using virtual environment Python",
+       isBackground=True
+   )
+
+3. Verify launch:
+   - Wait 5 seconds
+   - Check terminal output for "You can now view your Streamlit app"
+   - Look for Local URL (usually http://localhost:8501 or 8502)
+   - Verify no import errors in output
+
+4. Display launch information:
+   - Log "✓ Streamlit app starting..."
+   - Log "Access URL: http://localhost:8501 (or 8502 if 8501 busy)"
+   - Log "Network URL: http://[IP]:8501"
+   - Log "Press Ctrl+C in the terminal to stop"
+
+5. Provide user instructions:
+   - How to access the app (browser URL)
+   - How to use the search interface
+   - How to download generated documents
+   - How to stop the application
+
+VERIFICATION CHECKLIST (PHASE 4):
+1. Verify Streamlit syntax:
+   python -c "import streamlit; print(f'✓ Streamlit {streamlit.__version__}')"
+2. Test imports in streamlit_app.py:
+   python -c "from orchestrator import PipelineOrchestrator; print('✓')"
+3. Check terminal output for:
+   - "You can now view your Streamlit app in your browser"
+   - Local URL displayed
+   - No import errors
+   - Agent initialization logs
+4. Verify app loads in browser without errors
+
+COMMON ISSUES & AUTO-FIX (PHASE 4):
+
+Issue: ModuleNotFoundError when launching Streamlit
+Cause: Streamlit using global Python instead of virtual environment
+Fix: Use full path to virtual environment Python:
+     C:/Code_Repo/AgenticAI/.venv/Scripts/python.exe -m streamlit run streamlit_app.py
+Verify: Check terminal output shows agent initialization logs
+
+Issue: Port 8501 already in use
+Fix: Streamlit auto-selects next port (8502, 8503, etc.)
+Note: Check terminal output for actual port number
+
+Issue: Import errors for agents/orchestrator
+Cause: PyMuPDF import failing in document_formatter.py
+Fix: Ensure document_formatter.py has try/except for both import methods
+Rerun: Restart Streamlit after fixing imports
+
+Issue: App loads but crashes on pipeline execution
+Debug: Check browser console and terminal logs
+Fix: Verify all agents initialize correctly in session state
+      Add error handling in pipeline execution block
+
+Issue: Download buttons not appearing
+Cause: File paths are None or files don't exist
+Fix: Add file existence checks before st.download_button
+     Only show PDF/DOCX buttons if generated=True AND file exists
+
+COMPLETION CRITERIA:
+□ streamlit_app.py created with all features
+□ test_phase4.py passes (syntax check)
+□ Streamlit launches using VIRTUAL ENVIRONMENT Python
+□ App accessible at http://localhost:8501 (or 8502)
+□ No import errors in terminal output
+□ Agent initialization logs appear
+□ Configuration validation shows in sidebar
+□ Search form works correctly
+□ Results display with download buttons
+□ Error handling works properly
+□ Verification checklist completed
+□ Log "✓ PHASE 4 COMPLETE - Application launched successfully"
+□ Log "🎉 ALL PHASES COMPLETE - Multi-Agent Pipeline operational!"
+
+USER INSTRUCTIONS TO PROVIDE:
+1. Access the app at: http://localhost:8501
+2. Enter a search query in the text box
+3. Adjust number of results with slider
+4. Check "Send Email" if you want email delivery
+5. Click "Run Search Pipeline" button
+6. Wait for results to appear
+7. Download documents using the download buttons
+8. Check outputs/ folder for generated files
+9. To stop: Press Ctrl+C in the Streamlit terminal window
+
+===================================================================================
+FINAL VERIFICATION & COMMON ISSUES
+===================================================================================
+
+POST-LAUNCH VERIFICATION:
+After all 4 phases complete, verify in browser (http://localhost:8501):
+
+□ Configuration status shows green checkmarks in sidebar
+□ Search query input accepts text
+□ Number of results slider works (1-10)
+□ Email checkbox enables/disables recipient field
+□ "Run Search Pipeline" button executes search
+□ Progress bar updates during execution
+□ Search results display with AI summary
+□ Download buttons appear for generated files
+□ Markdown download works
+□ PDF download works (if pdf_generated=True)
+□ Word download works
+□ Raw JSON shows full pipeline output
+
+CRITICAL FIX SUMMARY (ALL PHASES):
+
+PyMuPDF Import (MOST COMMON ISSUE):
+- PyMuPDF 1.24+ changed from 'import fitz' to 'import pymupdf'
+- SOLUTION in document_formatter.py:
+  try:
+      import fitz  # PyMuPDF < 1.24
+  except ImportError:
+      import pymupdf as fitz  # PyMuPDF >= 1.24
+
+Virtual Environment (CRITICAL):
+- ALWAYS use: C:/Code_Repo/AgenticAI/.venv/Scripts/python.exe
+- For Streamlit: python.exe -m streamlit run streamlit_app.py
+- Verify: Check terminal shows agent initialization logs
+
+Azure OpenAI:
+- NO proxies parameter in AzureOpenAI initialization
+- Handle 401 errors gracefully (set ai_summary=None)
+
+Path Handling:
+- Check None before Path(): if value: Path(value)
+- Filter attachments: [a for a in attachments if a and Path(a).exists()]
+
+Email/SMTP:
+- May need app-specific password
+- Skip email tests if authentication fails (don't block pipeline)
+
+Streamlit Port:
+- Auto-selects next available port (8502, 8503)
+- Check terminal output for actual URL
+
+SUCCESS INDICATORS:
+✓ All 4 phases completed without errors
+✓ All test files passed successfully
+✓ Streamlit running on http://localhost:8501
+✓ Search returns results with AI summary
+✓ ComplianceGuard validates content successfully
+✓ Documents generated with citation-backed content
+✓ Download buttons functional
+✓ No errors in terminal logs
+✓ Enterprise-grade quality control operational
+
+===================================================================================
+ENTERPRISE-GRADE BENEFITS OF COMPLIANCE GUARD AGENT
+===================================================================================
+
+🔐 **Why ComplianceGuardAgent Makes This System Enterprise-Ready:**
+
+1. **Hallucination Control**
+   - Every fact must have a source URL
+   - AI summaries validated against actual search results
+   - No uncited claims in final output
+
+2. **Quality Assurance**
+   - Automatic duplicate removal
+   - Low-quality snippet filtering
+   - Minimum quality threshold enforcement
+
+3. **Client-Safe Deliverables**
+   - All documents are citation-backed
+   - Professional, verified content
+   - Safe to share with clients/stakeholders
+
+4. **Compliance & Audit Trail**
+   - Quality scores logged per pipeline run
+   - Rejection reasons tracked
+   - Full transparency in validation process
+
+5. **Extensibility**
+   - Easy to add custom validation rules
+   - Can integrate with:
+     * Corporate fact-checking databases
+     * Industry-specific compliance rules
+     * Legal/regulatory requirements
+
+6. **Production-Ready**
+   - Prevents low-quality outputs from reaching users
+   - Automatic pipeline halt on validation failure
+   - Clear error messages for debugging
+
+**Use Cases:**
+✓ Research reports for clients
+✓ Due diligence investigations
+✓ Compliance-driven workflows
+✓ Academic/scientific research summaries
+✓ Interview/assessment pipelines
+✓ Enterprise GenAI applications
+
+===================================================================================
+END OF 4-PHASE RAPID DEVELOPMENT GUIDE
+===================================================================================
+
+USAGE INSTRUCTIONS FOR GITHUB COPILOT:
+1. Copy Phase 1 prompt and paste in chat
+2. Wait for Phase 1 completion confirmation (✓ PHASE 1 COMPLETE)
+3. Copy Phase 2 prompt and paste in chat
+4. Wait for Phase 2 completion confirmation (✓ PHASE 2 COMPLETE)
+5. Copy Phase 3 prompt and paste in chat (includes ComplianceGuardAgent)
+6. Wait for Phase 3 completion confirmation (✓ PHASE 3 COMPLETE)
+7. Copy Phase 4 prompt and paste in chat
+8. Wait for application launch (✓ PHASE 4 COMPLETE)
+9. Access http://localhost:8501 in browser
+10. Start searching with enterprise-grade quality control!
+
+===================================================================================
+QUICK REFERENCE: CONSOLIDATED COPILOT PROMPT (ALTERNATIVE)
+===================================================================================
+
+Copy this if you want to give a single consolidated prompt to GitHub Copilot:
+
+---
+
+YOU ARE A SENIOR FULL-STACK AI ENGINEER.
+
+Your task is to build an END-TO-END ENTERPRISE-GRADE MULTI-AGENT AI SYSTEM from scratch.
+
+The system must include:
+• Streamlit Frontend
+• 5-Agent Backend (WebSearch, ComplianceGuard, DocumentFormatter, Emailer, Orchestrator)
+• Azure OpenAI integration
+• Web Search with DuckDuckGo
+• Compliance & Quality Guard (CRITICAL - DO NOT SKIP)
+• Document Generation (MD/PDF/DOCX)
+• Email Delivery with SMTP
+
+Follow ALL rules strictly.
+
+====================================================
+MULTI-AGENT ARCHITECTURE (FINAL)
+====================================================
+
+Agents (Execution Order):
+1. WebSearchAgent - DuckDuckGo HTML scraping + Azure OpenAI summaries
+2. ComplianceGuardAgent - Citation validation, hallucination control, quality checks (CRITICAL)
+3. DocumentFormatterAgent - Generate MD/PDF/DOCX with validated content only
+4. EmailerAgent - Send professional emails with compliance badge
+5. PipelineOrchestrator - Coordinate all agents, stop on compliance failure
+
+====================================================
+AGENT RESPONSIBILITIES
+====================================================
+
+1️⃣ WebSearchAgent
+• DuckDuckGo HTML scraping
+• Extract title, snippet, URL
+• Optional Azure OpenAI summary
+• No hallucination assumptions
+• Return structured JSON
+
+2️⃣ ComplianceGuardAgent (CRITICAL - DO NOT SKIP)
+• Validate every factual claim has a citation
+• Remove duplicate or weak sources
+• Cross-check AI summary vs sources
+• Quality scoring (0-1 scale)
+• Reject output if:
+  - Missing citations
+  - Conflicting information
+  - Quality score < threshold
+• Return approved / rejected flag
+• MUST run before document generation
+
+3️⃣ DocumentFormatterAgent
+• Accept ONLY validated content from ComplianceGuard
+• Generate:
+  - Markdown with citations
+  - PDF (PyMuPDF)
+  - Word (python-docx)
+• Include:
+  - Title + Timestamp
+  - Validated summary
+  - Numbered results with sources
+  - Citations section
+
+4️⃣ EmailerAgent
+• Modern EmailMessage API (NOT MIMEMultipart)
+• HTML styled email
+• Compliance badge: "✓ Content Validated & Citation-Checked"
+• Attach generated documents
+• Skip None or missing attachments
+
+5️⃣ PipelineOrchestrator
+• Sequential execution (WebSearch → Compliance → Formatter → Email)
+• STOP pipeline if ComplianceGuard.approved = False
+• Log all validation failures
+• Return structured JSON output with compliance metrics
+
+====================================================
+MANDATORY RULES
+====================================================
+
+✓ Use Python 3.8+
+✓ Use PyMuPDF (fitz / pymupdf fallback)
+✓ AzureOpenAI WITHOUT proxies parameter
+✓ Use try/except everywhere
+✓ Validate config before execution
+✓ Filter None paths before file/email ops
+✓ Singleton logger to avoid duplicate handlers
+✓ Each phase must have a test file
+✓ DO NOT proceed until tests pass
+✓ CRITICAL: ComplianceGuard MUST approve content before docs generated
+✓ Pipeline MUST halt if approved=False
+
+====================================================
+PHASE EXECUTION ORDER
+====================================================
+
+PHASE 1 → Project setup + utilities + dependencies
+PHASE 2 → WebSearchAgent with Azure OpenAI
+PHASE 3 → ComplianceGuardAgent + DocumentFormatter + Emailer + Orchestrator (4 agents)
+PHASE 4 → Streamlit UI with compliance status display
+
+====================================================
+FINAL GOAL
+====================================================
+
+From Streamlit UI:
+• User enters query
+• System searches web (DuckDuckGo)
+• ComplianceGuard validates citations & quality
+• If approved: Documents generated + Email sent
+• If rejected: Show validation errors, stop pipeline
+• User downloads citation-backed, enterprise-safe results
+
+Build EVERYTHING end-to-end.
+No placeholders.
+No skipped steps.
+Production-ready, enterprise-grade code only.
+ComplianceGuardAgent is MANDATORY for safety.
+
+====================================================
+
+---
+
+
