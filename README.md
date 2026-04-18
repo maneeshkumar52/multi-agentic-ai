@@ -1,116 +1,142 @@
 # Multi-Agent AI Research Pipeline
 
-A production-ready, modular multi-agent system that automates end-to-end research workflows — from web search and AI summarization to compliance validation, professional document generation, and email delivery.
+An architecture-driven, enterprise-style Python pipeline for automated research, compliance enforcement, report generation, and optional email delivery.
 
----
+## Why This Project
 
-## Overview
+This system is designed for teams that need:
 
-This project implements a pipeline of four specialized AI agents orchestrated to handle enterprise research tasks with quality assurance and audit trails.
+- Repeatable research workflows.
+- Validated source handling with governance checks.
+- Audit-friendly outputs (Markdown, PDF, DOCX).
+- A modular multi-agent structure that can be evolved without rewriting the whole flow.
 
+## System Architecture
+
+### Logical Architecture
+
+```text
+Input Query
+    |
+    v
+PipelineOrchestrator
+    |
+    +--> WebSearchAgent
+    |      - DuckDuckGo retrieval
+    |      - Optional Azure OpenAI summary
+    |
+    +--> ComplianceGuardAgent (quality gate)
+    |      - citation validation
+    |      - duplicate URL elimination
+    |      - quality scoring and approval decision
+    |
+    +--> DocumentFormatterAgent
+    |      - Markdown report
+    |      - PDF report
+    |      - DOCX report
+    |
+    +--> EmailerAgent (optional)
+           - HTML email body
+           - attachments from generated artifacts
 ```
-User Query
-    │
-    ▼
-┌─────────────────────┐
-│   Web Search Agent  │  DuckDuckGo search + Azure OpenAI summarization
-└─────────┬───────────┘
-          │
-          ▼
-┌─────────────────────┐
-│  Compliance Guard   │  Citation validation, deduplication, quality scoring
-└─────────┬───────────┘
-          │
-          ▼
-┌─────────────────────┐
-│ Document Formatter  │  Generates Markdown, PDF, and Word (.docx) reports
-└─────────┬───────────┘
-          │
-          ▼
-┌─────────────────────┐
-│   Emailer Agent     │  Professional HTML email with attachments via SMTP
-└─────────────────────┘
-```
 
----
+### Execution Flow
 
-## Features
+1. Orchestrator validates configuration and output directory readiness.
+2. Web search agent fetches and normalizes search results.
+3. Compliance guard enforces quality and approval rules.
+4. Formatter produces timestamped artifacts.
+5. Emailer sends approved artifacts when enabled.
 
-- **Automated Web Research** — Searches DuckDuckGo (no API key required) and generates AI-powered 2–3 sentence summaries via Azure OpenAI
-- **Compliance Validation** — Validates citations, removes duplicate URLs, applies quality scoring (0–1 scale), and enforces approval thresholds
-- **Multi-Format Document Generation** — Produces `.md`, `.pdf`, and `.docx` reports with professional formatting and compliance badges
-- **Email Delivery** — Sends styled HTML emails with file attachments over SMTP STARTTLS
-- **Graceful Degradation** — Runs without Azure OpenAI (search-only mode) and without SMTP (document-only mode)
-- **Audit Logging** — Consistent timestamped logs across all agents for full pipeline visibility
+### Governance Pattern
 
----
+The pipeline follows a gate-based model:
 
-## Tech Stack
+- Stage 1 (acquisition): gather external inputs.
+- Stage 2 (governance): enforce trust and quality thresholds.
+- Stage 3 (publication): produce human-consumable reports.
+- Stage 4 (distribution): controlled delivery to stakeholders.
 
-| Component | Technology |
-|-----------|-----------|
-| Language | Python 3.10+ |
-| AI Summarization | Azure OpenAI (GPT-4) |
-| Web Search | DuckDuckGo (via BeautifulSoup) |
-| PDF Generation | PyMuPDF (`fitz`) |
-| Word Documents | `python-docx` |
-| Email | `smtplib` with STARTTLS |
-| Config Management | `python-dotenv` |
+This model makes the pipeline suitable for AI architecture reviews where data provenance and output quality matter.
 
----
+## Key Capabilities
+
+- Web retrieval from DuckDuckGo HTML endpoint.
+- Optional Azure OpenAI summarization for concise synthesis.
+- Structural citation checks and source de-duplication.
+- Quality score computation with explicit thresholds.
+- Multi-format report packaging for different stakeholder formats.
+- Optional secure SMTP delivery using STARTTLS.
+- Full pipeline traceability using structured logs.
+
+## Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Runtime | Python 3.10+ |
+| Search Retrieval | requests + BeautifulSoup |
+| AI Summarization | Azure OpenAI via openai.AzureOpenAI |
+| Compliance Logic | Custom Python validation/scoring rules |
+| Document Generation | Markdown, PyMuPDF, python-docx |
+| Email Transport | smtplib + EmailMessage + STARTTLS |
+| Configuration | python-dotenv + env variables |
 
 ## Project Structure
 
-```
+```text
 multi-agentic-ai/
-├── orchestrator.py              # Pipeline controller — coordinates all agents
-├── agents/
-│   ├── web_search_agent.py      # DuckDuckGo search + AI summarization
-│   ├── compliance_guard_agent.py # Content validation & quality scoring
-│   ├── document_formatter.py    # PDF / Word / Markdown report generation
-│   └── emailer_agent.py         # SMTP email delivery with HTML templates
-├── utils/
-│   ├── config.py                # Environment-based configuration
-│   └── logger.py                # Singleton logger
-├── test_phase1.py               # Core utilities tests
-├── test_phase2.py               # Web search agent tests
-├── test_phase3.py               # Full pipeline integration tests
-├── requirements.txt
-└── .env.example                 # Template for environment variables
+|- orchestrator.py
+|- agents/
+|  |- web_search_agent.py
+|  |- compliance_guard_agent.py
+|  |- document_formatter.py
+|  |- emailer_agent.py
+|- utils/
+|  |- config.py
+|  |- logger.py
+|- test_phase1.py
+|- test_phase2.py
+|- test_phase3.py
+|- requirements.txt
+|- .env.example
+|- outputs/
 ```
 
----
+## Setup Steps
 
-## Getting Started
-
-### Prerequisites
-
-- Python 3.10+
-- Azure OpenAI resource (optional — pipeline runs without it)
-- SMTP-enabled email account (optional — disables email delivery if absent)
-
-### Installation
+### 1) Clone and Enter Workspace
 
 ```bash
-# Clone the repository
 git clone https://github.com/maneeshkumar52/multi-agentic-ai.git
 cd multi-agentic-ai
+```
 
-# Create and activate a virtual environment
+### 2) Create Virtual Environment
+
+```bash
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate
+```
 
-# Install dependencies
+Windows PowerShell:
+
+```powershell
+venv\Scripts\Activate.ps1
+```
+
+### 3) Install Dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-### Configuration
-
-Copy the example environment file and fill in your credentials:
+### 4) Configure Environment
 
 ```bash
 cp .env.example .env
 ```
+
+Edit .env with your values:
 
 ```env
 # SMTP Email Settings
@@ -122,7 +148,7 @@ FROM_EMAIL=your@email.com
 DEFAULT_TO_EMAIL=recipient@email.com
 
 # Azure OpenAI (optional)
-AZURE_OPENAI_API_KEY=your_key
+AZURE_OPENAI_API_KEY=your_api_key
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_VERSION=2024-02-15-preview
 AZURE_OPENAI_DEPLOYMENT=gpt-4
@@ -131,98 +157,93 @@ AZURE_OPENAI_DEPLOYMENT=gpt-4
 OUTPUT_DIR=./outputs
 ```
 
----
+## How to Run
 
-## Usage
-
-### Run the Full Pipeline
+### Python Entry Example
 
 ```python
-from orchestrator import ResearchOrchestrator
+from orchestrator import PipelineOrchestrator
 
-orchestrator = ResearchOrchestrator()
+orchestrator = PipelineOrchestrator()
+
 result = orchestrator.run_pipeline(
-    query="Python best practices 2024",
-    to_email="recipient@example.com",
-    send_email=True
+    query="enterprise ai governance architecture",
+    num_results=5,
+    send_email=False,
+    recipient_email=None,
+    filename_prefix="search_report"
 )
 
-print(result["summary"])
+print(orchestrator.get_pipeline_summary(result))
 ```
 
-### Run Individual Tests
+### With Email Delivery Enabled
+
+```python
+from orchestrator import PipelineOrchestrator
+
+orchestrator = PipelineOrchestrator()
+
+result = orchestrator.run_pipeline(
+    query="ai operating model for architecture teams",
+    num_results=5,
+    send_email=True,
+    recipient_email="recipient@example.com",
+    filename_prefix="search_report"
+)
+
+print(result["status"])
+```
+
+## Testing and Validation
+
+Run in sequence for progressive confidence:
 
 ```bash
-# Phase 1: Core utilities
 python test_phase1.py
-
-# Phase 2: Web search agent
 python test_phase2.py
-
-# Phase 3: Full integration
 python test_phase3.py
 ```
 
----
+Test phases:
 
-## Pipeline Details
+- Phase 1: config and utility validation.
+- Phase 2: web search and summary behavior.
+- Phase 3: end-to-end multi-agent integration.
 
-### Agent 1 — Web Search Agent
+## Compliance and Quality Rules
 
-- Queries DuckDuckGo and parses up to 5 results (title, URL, snippet)
-- Sends results to Azure OpenAI for a concise 2–3 sentence summary
-- Falls back gracefully if Azure OpenAI is unavailable
+The compliance guard enforces:
 
-### Agent 2 — Compliance Guard
+- Required fields: title, url, snippet, source.
+- Source type validation (DuckDuckGo entries).
+- URL validation and duplicate elimination.
+- Minimum quality threshold of 0.3.
+- Minimum validated result count of 2.
+- Rejection if too many records are filtered.
 
-- Validates all required fields per citation (title, URL, snippet, source)
-- Deduplicates results by URL
-- Scores quality on a 0–1 scale based on content richness
-- Applies approval rules: minimum 2 results, score ≥ 0.3, ≤50% filtered
+If governance rules fail, pipeline status becomes rejected and downstream publication is blocked.
 
-### Agent 3 — Document Formatter
+## Operational Notes
 
-- Generates timestamped reports in three formats simultaneously
-- PDF: multi-page layout with automatic text wrapping and pagination
-- Word: hierarchical headings with centered title and styled body
-- Markdown: clean structured output with compliance badge
+- Azure OpenAI is optional. If not configured, search still works and summary is skipped.
+- SMTP is optional. If disabled, reports are generated without delivery.
+- Output artifacts are timestamped and stored under the configured output directory.
+- Logs are emitted per agent for easier troubleshooting and observability.
 
-### Agent 4 — Emailer Agent
+## Security and Production Guidance
 
-- Constructs a professional HTML email with inline CSS styling
-- Attaches generated documents (validates file existence before attaching)
-- Delivers over SMTP STARTTLS with full error handling
-
----
-
-## Testing
-
-The three-phase test suite validates each layer progressively:
-
-| Phase | Scope | Command |
-|-------|-------|---------|
-| Phase 1 | Config, Logger, environment loading | `python test_phase1.py` |
-| Phase 2 | Web search, AI summary, result parsing | `python test_phase2.py` |
-| Phase 3 | Full pipeline integration | `python test_phase3.py` |
-
----
-
-## Security Notes
-
-- Credentials are loaded exclusively from `.env` (never hardcoded)
-- `.env` is excluded from version control via `.gitignore`
-- Email transmission uses STARTTLS encryption
-- Output files are excluded from the repository
-
----
-
-## License
-
-MIT License — see [LICENSE](LICENSE) for details.
-
----
+- Keep credentials only in .env and never commit secrets.
+- Use app-specific SMTP credentials where possible.
+- Consider secret management via environment injection in CI/CD.
+- Add periodic dependency and security scanning before production rollout.
 
 ## Author
 
-**Maneesh Kumar**  
-[GitHub](https://github.com/maneeshkumar52)
+Maneesh Kumar
+
+- GitHub: https://github.com/maneeshkumar52
+
+## License
+
+MIT License. See LICENSE.
