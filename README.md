@@ -1,35 +1,59 @@
 # Multi-Agentic AI
 
-Enterprise-style multi-agent pipeline for automated analysis, governance checks, and report generation.
+Professional-grade multi-agent research and governance application with a local-first Streamlit interface, modular service orchestration, and production-friendly operational workflow.
 
-## Architecture
+## 1. Executive Overview
 
-- Orchestrator: Coordinates pipeline phases and agent sequencing
-- Specialist Agents: Perform retrieval, analysis, and transformation tasks
-- Compliance Gate: Validates quality, policy, and output readiness
-- Publication Layer: Generates artifacts under `outputs/`
+This repository provides:
+- Streamlit-based operator UI
+- Modular orchestration and domain logic
+- Configurable AI runtime integrations (local and/or cloud)
+- Artifacts and output persistence for reproducible runs
 
-## Repository Structure
+## 2. Architecture
+
+### 2.1 Logical Architecture
+
+```txt
+User / Operator
+      |
+      v
+Streamlit UI Layer
+      |
+      +--> Orchestration Layer
+      +--> AI Adapter Layer (Ollama/OpenAI)
+      +--> Retrieval / Processing Layer
+      +--> Persistence Layer (data/, outputs/)
+```
+
+### 2.2 Runtime Components
+- UI Process: Streamlit app
+- Model Runtime: configurable local/cloud adapter
+- Storage: local filesystem artifacts
+- Validation: tests and smoke checks
+
+## 3. Repository Structure
 
 ```txt
 multi-agentic-ai/
   orchestrator.py
-  agents/
-  utils/
-  outputs/
-  test_phase*.py
+  config.yaml or .env.example
+  agents/ or pipeline modules
+  data/ or outputs/
+  tests/ or smoke_test.py
   requirements.txt
 ```
 
-## Prerequisites
+## 4. Prerequisites
 
 - Python 3.10+
 - pip 23+
-- Optional API keys for external model providers
+- Git
+- Ollama or configured model runtime when required
 
-## Setup and Execution
+## 5. Local Setup
 
-1. Clone and enter repository
+1. Clone repository
 
 ```bash
 git clone https://github.com/maneeshkumar52/multi-agentic-ai.git
@@ -50,26 +74,59 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-4. Configure environment
+4. Configure runtime
 
 ```bash
 cp .env.example .env 2>/dev/null || true
 ```
 
-5. Execute pipeline validation phases
+## 6. Run the Application
 
 ```bash
-python test_phase1.py
-python test_phase2.py
-python test_phase3.py
+streamlit run orchestrator.py
 ```
 
-## Troubleshooting
+UI endpoint:
+- http://localhost:8501
 
-- Dependency mismatch: recreate virtual environment and reinstall
-- Missing secrets: verify `.env` values for model/email providers
-- Report generation errors: ensure output directory exists and is writable
+## 7. Validation and Test Flow
 
-## License
+1. Syntax validation
 
-See `LICENSE` in this repository.
+```bash
+python3 -m compileall -q .
+```
+
+2. Tests
+
+```bash
+pytest -q 2>/dev/null || true
+```
+
+3. Smoke checks
+
+```bash
+python smoke_test.py 2>/dev/null || true
+```
+
+## 8. Troubleshooting
+
+- Streamlit command not found:
+  - Activate .venv
+  - Reinstall requirements
+- Model runtime unavailable:
+  - Start configured local runtime or set cloud credentials
+- Empty outputs:
+  - Verify configured folders and file permissions
+
+## 9. Production Readiness Checklist
+
+- [ ] Config externalized
+- [ ] Secrets managed securely
+- [ ] Logging enabled
+- [ ] Smoke tests pass
+- [ ] Deployment health checks defined
+
+## 10. License
+
+See LICENSE in this repository.
